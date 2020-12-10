@@ -1,0 +1,14 @@
+function foo(int v)
+{
+	return bar1(v + 2) + bar2(v + 3);
+}
+
+function foo()
+{
+	return 2 + bar();
+}
+
+function foo()
+{
+	return bar1(bar2(bar3()) + 2);
+}
