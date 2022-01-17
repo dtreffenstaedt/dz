@@ -12,6 +12,8 @@
 #include "IndexIterator.h"
 #include "AllIterator.h"
 #include "IRBuilderEx.h"
+#include "LazySink.h"
+#include "DzTerminator.h"
 
 #include "values/DependentValue.h"
 #include "values/TypedValue.h"
@@ -74,7 +76,7 @@ std::vector<DzResult> DzFunctionCall::build(const EntryPoint &entryPoint, Stack 
 		auto storageType = storage->type();
 		auto valueType = value->type();
 
-		return valueType->is(storageType, entryPoint);
+		return valueType->equals(storageType, entryPoint);
 	});
 
 	if (!result)

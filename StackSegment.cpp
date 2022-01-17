@@ -60,7 +60,7 @@ const BaseValue *fetchValue(const BaseValue *value, const EntryPoint &entryPoint
 			return fetchValue(value, entryPoint);
 		});
 
-		return new TupleValue { values };
+		return new TupleValue(tupleValue->iteratorType(), values);
 	}
 
 	return value;

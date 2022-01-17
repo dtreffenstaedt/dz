@@ -11,7 +11,7 @@ class DzTypeName;
 class LazyValue : public BaseValue
 {
 	public:
-		LazyValue(const IteratorTypeHandle &handle, const DzValue *subject, const EntryPoint &entryPoint);
+		LazyValue(const IteratorTypeHandle &handle, const DzValue *subject, const EntryPoint &entryPoint, const Stack &values);
 
 		std::vector<DzResult> build(llvm::BasicBlock *block, const Stack &values) const;
 
@@ -22,6 +22,8 @@ class LazyValue : public BaseValue
 
 		const DzValue *m_subject;
 		const EntryPoint *m_entryPoint;
+
+		const Stack m_values;
 };
 
 #endif // LAZYVALUE_H

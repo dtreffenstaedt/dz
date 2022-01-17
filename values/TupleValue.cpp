@@ -1,7 +1,8 @@
 #include "TupleValue.h"
 
-TupleValue::TupleValue(const std::vector<const BaseValue *> &values)
-	: m_values(values)
+TupleValue::TupleValue(const IteratorType *iteratorType, const std::vector<const BaseValue *> &values)
+	: m_iteratorType(iteratorType)
+	, m_values(values)
 {
 }
 
@@ -19,7 +20,12 @@ const Type *TupleValue::type() const
 		return value->type();
 	});
 
-	return TupleType::get(types);
+	return TupleType::get(m_iteratorType, types);
+}
+
+const IteratorType *TupleValue::iteratorType() const
+{
+	return m_iteratorType;
 }
 
 Stack TupleValue::values() const

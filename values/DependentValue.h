@@ -3,16 +3,19 @@
 
 #include "BaseValue.h"
 
+class IteratorType;
+
 class DependentValue : public BaseValue
 {
 	public:
-		DependentValue(const EntryPoint *provider);
+		DependentValue(const Type *iteratorType, const EntryPoint *provider);
 
 		const Type *type() const override;
 
 		const EntryPoint *provider() const;
 
 	private:
+		const Type *m_iteratorType;
 		const EntryPoint *m_provider;
 };
 

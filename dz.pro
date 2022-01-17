@@ -29,6 +29,7 @@ SOURCES += \
 	DzImportedFunction.cpp \
 	DzInstantiation.cpp \
 	DzIntegralLiteral.cpp \
+	DzIteratorFunction.cpp \
 	DzMemberAccess.cpp \
 	DzReturn.cpp \
 	DzStringLiteral.cpp \
@@ -114,6 +115,7 @@ HEADERS += \
 	DzImportedFunction.h \
 	DzInstantiation.h \
 	DzIntegralLiteral.h \
+	DzIteratorFunction.h \
 	DzMemberAccess.h \
 	DzReturn.h \
 	DzStringLiteral.h \

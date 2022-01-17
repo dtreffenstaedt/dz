@@ -10,18 +10,23 @@
 
 #include "types/TupleType.h"
 
+class IteratorType;
+
 class TupleValue : public BaseValue
 {
 	public:
-		TupleValue(const std::vector<const BaseValue *> &values);
+		TupleValue(const IteratorType *iteratorType, const std::vector<const BaseValue *> &values);
 
 		size_t size() const;
 
 		const Type *type() const override;
+		const IteratorType *iteratorType() const;
 
 		Stack values() const;
 
 	private:
+		const IteratorType *m_iteratorType;
+
 		std::vector<const BaseValue *> m_values;
 };
 

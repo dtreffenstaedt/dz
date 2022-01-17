@@ -10,18 +10,21 @@
 class Type;
 class EntryPoint;
 class DzValue;
+class IteratorType;
 
 class ExpandableValue : public BaseValue
 {
 	public:
-		ExpandableValue(const EntryPoint &provider, const DzValue *chain);
+		ExpandableValue(const IteratorType *iteratorType, const EntryPoint &provider, const DzValue *chain);
 
 		const Type *type() const override;
 
+		const IteratorType *iteratorType() const;
 		const EntryPoint *provider() const;
 		const DzValue *chain() const;
 
 	private:
+		const IteratorType *m_iteratorType;
 		const EntryPoint *m_provider;
 		const DzValue *m_chain;
 };

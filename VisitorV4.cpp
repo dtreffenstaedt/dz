@@ -41,16 +41,19 @@
 #include "TaintedSink.h"
 #include "Junction.h"
 #include "IteratorTypeHandle.h"
+#include "DzIteratorFunction.h"
 
 #include "types/Prototype.h"
+#include "types/IteratorType.h"
 
 #include "values/TypedValue.h"
 #include "values/ReferenceValue.h"
 #include "values/LazyValue.h"
 #include "values/TaintedValue.h"
 
-VisitorV4::VisitorV4(DzValue *alpha, DzValue *beta)
-	: m_alpha(alpha)
+VisitorV4::VisitorV4(const IteratorType *iteratorType, DzValue *alpha, DzValue *beta)
+	: m_iteratorType(iteratorType)
+	, m_alpha(alpha)
 	, m_beta(beta)
 {
 }
@@ -190,7 +193,7 @@ antlrcpp::Any VisitorV4::visitFunction(dzParser::FunctionContext *context)
 	{
 		auto terminator = new DzExportedFunctionTerminator();
 
-		VisitorV4 visitor(terminator, nullptr);
+		VisitorV4 visitor(nullptr, terminator, nullptr);
 
 		auto entryPoint = new DzExportedFunction(name
 			, visitor.visit<DzValue *>(block)
@@ -200,15 +203,24 @@ antlrcpp::Any VisitorV4::visitFunction(dzParser::FunctionContext *context)
 		return static_cast<DzCallable *>(entryPoint);
 	}
 
+	IteratorTypeHandle ith;
+
 	auto terminator = new DzTerminator(name, attribute);
 
-	VisitorV4 visitor(terminator, nullptr);
+	VisitorV4 visitor((const IteratorType *)ith.type(), terminator, nullptr);
 
 	auto function = new DzFunction(attribute
 		, name
 		, arguments
 		, visitor.visit<DzValue *>(block)
 		);
+
+	if (attribute == FunctionAttribute::Iterator)
+	{
+		auto f = new DzIteratorFunction(ith, arguments, function);
+
+		return static_cast<DzCallable *>(f);
+	}
 
 	return static_cast<DzCallable *>(function);
 }
@@ -249,17 +261,17 @@ antlrcpp::Any VisitorV4::visitRet(dzParser::RetContext *context)
 	{
 		auto continuation = visit<DzValue *>(context->chained);
 
-		auto ret = new DzReturn(m_alpha, continuation);
+		auto ret = new DzReturn(m_iteratorType, m_alpha, continuation);
 
-		VisitorV4 visitor(ret, nullptr);
+		VisitorV4 visitor(nullptr, ret, nullptr);
 
 		return visitor
 			.visit<DzValue *>(context->value);
 	}
 
-	auto ret = new DzReturn(m_alpha, nullptr);
+	auto ret = new DzReturn(m_iteratorType, m_alpha, nullptr);
 
-	VisitorV4 visitor(ret, nullptr);
+	VisitorV4 visitor(nullptr, ret, nullptr);
 
 	return visitor
 		.visit<DzValue *>(context->value);
@@ -273,7 +285,7 @@ antlrcpp::Any VisitorV4::visitBlock(dzParser::BlockContext *context)
 	{
 		auto stackFrame = new BlockStackFrame(consumer);
 
-		VisitorV4 visitor(stackFrame, m_alpha);
+		VisitorV4 visitor(m_iteratorType, stackFrame, m_alpha);
 
 		return visitor
 			.visit<DzValue *>(expression);
@@ -286,12 +298,12 @@ antlrcpp::Any VisitorV4::visitBinary(dzParser::BinaryContext *context)
 		, context->OP()->getText()
 		);
 
-	VisitorV4 leftVisitor(binary, nullptr);
+	VisitorV4 leftVisitor(m_iteratorType, binary, nullptr);
 
 	auto left = leftVisitor
 		.visit<DzValue *>(context->left);
 
-	VisitorV4 rightVisitor(left, nullptr);
+	VisitorV4 rightVisitor(m_iteratorType, left, nullptr);
 
 	auto right = rightVisitor
 		.visit<DzValue *>(context->right);
@@ -307,11 +319,11 @@ antlrcpp::Any VisitorV4::visitCall(dzParser::CallContext *context)
 
 	std::vector<DzValue *> values;
 
-	std::transform(begin(expression), end(expression), std::back_insert_iterator(values), [](dzParser::ExpressionContext *parameter)
+	std::transform(begin(expression), end(expression), std::back_insert_iterator(values), [this](dzParser::ExpressionContext *parameter)
 	{
 		auto evaluation = new LazyEvaluation();
 
-		VisitorV4 visitor(evaluation, nullptr);
+		VisitorV4 visitor(m_iteratorType, evaluation, nullptr);
 
 		return visitor
 			.visit<DzValue *>(parameter);
@@ -338,9 +350,9 @@ antlrcpp::Any VisitorV4::visitWith(dzParser::WithContext *context)
 		, fields
 		);
 
-	return std::accumulate(begin(assignments), end(assignments), static_cast<DzValue *>(instantiation), [](auto consumer, dzParser::AssignmentContext *assignment)
+	return std::accumulate(begin(assignments), end(assignments), static_cast<DzValue *>(instantiation), [this](auto consumer, dzParser::AssignmentContext *assignment)
 	{
-		VisitorV4 visitor(consumer, nullptr);
+		VisitorV4 visitor(m_iteratorType, consumer, nullptr);
 
 		return visitor
 			.visit<DzValue *>(assignment->expression());
@@ -441,7 +453,7 @@ antlrcpp::Any VisitorV4::visitStructure(dzParser::StructureContext *context)
 
 		if (field->expression())
 		{
-			VisitorV4 visitor(DzTerminator::instance(), nullptr);
+			VisitorV4 visitor(m_iteratorType, DzTerminator::instance(), nullptr);
 
 			auto defaultValue = visitor
 				.visit<DzValue *>(field->expression());
@@ -483,9 +495,9 @@ antlrcpp::Any VisitorV4::visitInstantiation(dzParser::InstantiationContext *cont
 		, fields
 		);
 
-	return std::accumulate(begin(assignments), end(assignments), static_cast<DzValue *>(instantiation), [](auto consumer, dzParser::AssignmentContext *assignment)
+	return std::accumulate(begin(assignments), end(assignments), static_cast<DzValue *>(instantiation), [this](auto consumer, dzParser::AssignmentContext *assignment)
 	{
-		VisitorV4 visitor(consumer, nullptr);
+		VisitorV4 visitor(m_iteratorType, consumer, nullptr);
 
 		return visitor
 			.visit<DzValue *>(assignment->expression());
@@ -494,14 +506,14 @@ antlrcpp::Any VisitorV4::visitInstantiation(dzParser::InstantiationContext *cont
 
 antlrcpp::Any VisitorV4::visitConditional(dzParser::ConditionalContext *context)
 {
-	VisitorV4 blockVisitor(m_beta, nullptr);
+	VisitorV4 blockVisitor(m_iteratorType, m_beta, nullptr);
 
 	auto block = blockVisitor
 		.visit<DzValue *>(context->block());
 
 	auto conditional = new DzConditional(m_alpha, block);
 
-	VisitorV4 expressionVisitor(conditional, nullptr);
+	VisitorV4 expressionVisitor(m_iteratorType, conditional, nullptr);
 
 	auto condition = expressionVisitor
 		.visit<DzValue *>(context->expression());
@@ -515,7 +527,7 @@ antlrcpp::Any VisitorV4::visitGlobal(dzParser::GlobalContext *context)
 
 	auto terminator = new DzGlobalTerminator(name);
 
-	VisitorV4 visitor(terminator, nullptr);
+	VisitorV4 visitor(m_iteratorType, terminator, nullptr);
 
 	auto literal = visitor
 		.visit<DzValue *>(context->literal());
@@ -544,7 +556,7 @@ antlrcpp::Any VisitorV4::visitExpansion(dzParser::ExpansionContext *context)
 {
 	auto expansion = new DzExpansion(m_alpha);
 
-	VisitorV4 visitor(expansion, nullptr);
+	VisitorV4 visitor(m_iteratorType, expansion, nullptr);
 
 	return visitor
 		.visit<DzValue *>(context->expression());
@@ -556,9 +568,9 @@ antlrcpp::Any VisitorV4::visitContinuation(dzParser::ContinuationContext *contex
 
 	auto expressions = context->expression();
 
-	return std::accumulate(begin(expressions), end(expressions), static_cast<DzValue *>(continuation), [](DzValue *consumer, dzParser::ExpressionContext *parameter)
+	return std::accumulate(begin(expressions), end(expressions), static_cast<DzValue *>(continuation), [this](DzValue *consumer, dzParser::ExpressionContext *parameter)
 	{
-		VisitorV4 visitor(consumer, nullptr);
+		VisitorV4 visitor(m_iteratorType, consumer, nullptr);
 
 		auto result = visitor
 			.visit<DzValue *>(parameter);
@@ -578,23 +590,23 @@ antlrcpp::Any VisitorV4::visitArray(dzParser::ArrayContext *context)
 		return { expressions.size() - y, x };
 	});
 
+	IteratorTypeHandle handle;
+
 	auto firstElement = std::accumulate(begin(indexed), end(indexed), (DzValue *)nullptr, [&](auto next, Indexed<dzParser::ExpressionContext *> expression)
 	{
-		auto element = new DzArrayElement(expression.index, next);
+		auto element = new DzArrayElement((const IteratorType *)handle.type(), expression.index, next);
 
-		VisitorV4 visitor(element, nullptr);
+		VisitorV4 visitor(m_iteratorType, element, nullptr);
 
 		return visitor
 			.visit<DzValue *>(expression.value);
 	});
 
-	IteratorTypeHandle handle;
-
 	if (firstElement)
 	{
 		auto init = new DzArrayInit(firstElement);
-		auto junction = new Junction(init);
-		auto taintedSink = new TaintedSink(junction);
+//		auto junction = new Junction(init);
+		auto taintedSink = new TaintedSink(init);
 		auto lazySink = new LazySink(handle, m_alpha, taintedSink);
 
 		return static_cast<DzValue *>(lazySink);

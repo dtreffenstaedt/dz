@@ -27,6 +27,12 @@ class Tests : public QObject
 {
 	W_OBJECT(Tests)
 
+	public:
+		Tests()
+		{
+			scenario58();
+		}
+
 	private:
 		void scenario1()
 		{
@@ -1759,64 +1765,130 @@ class Tests : public QObject
 			QCOMPARE(result, 6);
 		}
 
-		W_SLOT(scenario1)
-		W_SLOT(scenario2)
-		W_SLOT(scenario3)
-		W_SLOT(scenario4)
-		W_SLOT(scenario5)
-		W_SLOT(scenario6)
-		W_SLOT(scenario7)
-		W_SLOT(scenario8)
-		W_SLOT(scenario9)
-		W_SLOT(scenario10)
-		W_SLOT(scenario11)
-		W_SLOT(scenario12)
-		W_SLOT(scenario13)
-		W_SLOT(scenario14)
-		W_SLOT(scenario15)
-		W_SLOT(fibonacci)
-		W_SLOT(scenario16)
-		W_SLOT(scenario17)
-		W_SLOT(scenario18)
-		W_SLOT(scenario19)
-		W_SLOT(scenario20)
-		W_SLOT(scenario21)
-		W_SLOT(scenario22)
-		W_SLOT(scenario23)
-		W_SLOT(scenario24)
-		W_SLOT(scenario25)
-		W_SLOT(scenario26)
-		W_SLOT(scenario27)
-		W_SLOT(scenario28)
-		W_SLOT(scenario29)
-		W_SLOT(scenario30)
-		W_SLOT(scenario31)
-		W_SLOT(scenario32)
-		W_SLOT(scenario33)
-		W_SLOT(scenario34)
-		W_SLOT(scenario35)
-		W_SLOT(scenario36)
-		W_SLOT(scenario37)
-		W_SLOT(scenario38)
-		W_SLOT(scenario39)
-		W_SLOT(scenario40)
-		W_SLOT(scenario41)
-		W_SLOT(scenario42)
-		W_SLOT(scenario43)
-		W_SLOT(scenario44)
-		W_SLOT(scenario45)
-		W_SLOT(scenario46)
-		W_SLOT(scenario47)
-		W_SLOT(scenario48)
-		W_SLOT(scenario49)
-		W_SLOT(scenario50)
-		W_SLOT(scenario51)
-		W_SLOT(scenario52)
-		W_SLOT(scenario53)
-		W_SLOT(scenario54)
-		W_SLOT(scenario55)
-		W_SLOT(scenario56)
-		W_SLOT(scenario57)
+		void scenario58()
+		{
+			auto result = exec(R"(
+				struct Struct
+				{
+					values: []
+				};
+
+				function sum(int product, int v)
+				{
+					return product + v;
+				}
+
+				function sum(int product, (int v, ...values))
+				{
+					return sum(product + v, ...values);
+				}
+
+				function add(int addend, int v)
+				{
+					return v + addend;
+				}
+
+				iterator function add(int addend, (int v, ...values))
+				{
+					return v + addend -> (addend, ...values);
+				}
+
+				function first(int v)
+				{
+					return v;
+				}
+
+				function first((int v, ...values))
+				{
+					return v;
+				}
+
+				function createStruct()
+				{
+					return Struct
+					{
+						values: [1, 2, 3]
+					};
+				}
+
+				function foo(Struct s)
+				{
+					if (sum(0, s.values) < 20)
+					{
+						return foo(s with { values: add(1, s.values) });
+					}
+
+					return first(s.values);
+				}
+
+				export int main()
+				{
+					return foo(createStruct());
+				}
+			)");
+
+			QCOMPARE(result, 6);
+		}
+
+//		W_SLOT(scenario1)
+//		W_SLOT(scenario2)
+//		W_SLOT(scenario3)
+//		W_SLOT(scenario4)
+//		W_SLOT(scenario5)
+//		W_SLOT(scenario6)
+//		W_SLOT(scenario7)
+//		W_SLOT(scenario8)
+//		W_SLOT(scenario9)
+//		W_SLOT(scenario10)
+//		W_SLOT(scenario11)
+//		W_SLOT(scenario12)
+//		W_SLOT(scenario13)
+//		W_SLOT(scenario14)
+//		W_SLOT(scenario15)
+//		W_SLOT(fibonacci)
+//		W_SLOT(scenario16)
+//		W_SLOT(scenario17)
+//		W_SLOT(scenario18)
+//		W_SLOT(scenario19)
+//		W_SLOT(scenario20)
+//		W_SLOT(scenario21)
+//		W_SLOT(scenario22)
+//		W_SLOT(scenario23)
+//		W_SLOT(scenario24)
+//		W_SLOT(scenario25)
+//		W_SLOT(scenario26)
+//		W_SLOT(scenario27)
+//		W_SLOT(scenario28)
+//		W_SLOT(scenario29)
+//		W_SLOT(scenario30)
+//		W_SLOT(scenario31)
+//		W_SLOT(scenario32)
+//		W_SLOT(scenario33)
+//		W_SLOT(scenario34)
+//		W_SLOT(scenario35)
+//		W_SLOT(scenario36)
+//		W_SLOT(scenario37)
+//		W_SLOT(scenario38)
+//		W_SLOT(scenario39)
+//		W_SLOT(scenario40)
+//		W_SLOT(scenario41)
+//		W_SLOT(scenario42)
+//		W_SLOT(scenario43)
+//		W_SLOT(scenario44)
+//		W_SLOT(scenario45)
+//		W_SLOT(scenario46)
+//		W_SLOT(scenario47)
+//		W_SLOT(scenario48)
+//		W_SLOT(scenario49)
+//		W_SLOT(scenario50)
+//		W_SLOT(scenario51)
+//		W_SLOT(scenario52)
+//		W_SLOT(scenario53)
+//		W_SLOT(scenario54)
+//		W_SLOT(scenario55)
+//		W_SLOT(scenario56)
+//		W_SLOT(scenario57)
+		W_SLOT(scenario58)
 
 	private:
 		ModuleInfo *compile(std::string source)
@@ -1830,7 +1902,7 @@ class Tests : public QObject
 
 			auto program = parser.program();
 
-			VisitorV4 visitor(nullptr, nullptr);
+			VisitorV4 visitor(nullptr, nullptr, nullptr);
 
 			return visitor
 				.visit<ModuleInfo *>(program);
